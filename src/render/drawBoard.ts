@@ -1,0 +1,81 @@
+import { GRID_SIZE } from "../engine";
+import type { Tile } from "../engine";
+import { tileColor } from "./palette";
+
+const BOARD_COLOR = "#bbada0";
+const CELL_COLOR = "#cdc1b4";
+const CORNER_RADIUS = 6;
+const GAP_RATIO = 0.03;
+
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** The Grid's gap/cellSize in CSS pixels for one `cssSize`, shared by every Cell/Tile position calculation. */
+interface Layout {
+  gap: number;
+  cellSize: number;
+}
+
+/**
+ * Draws the Grid background and every Tile onto `context`, in the CSS-pixel
+ * coordinate space `applyCanvasSize` pre-scales the context for. Redraws the
+ * whole board from scratch — no animation, no incremental diffing.
+ */
+export function drawBoard(context: CanvasRenderingContext2D, cssSize: number, tiles: Tile[]): void {
+  const layout = computeLayout(cssSize);
+
+  context.clearRect(0, 0, cssSize, cssSize);
+  fillRoundedRect(context, { x: 0, y: 0, width: cssSize, height: cssSize }, BOARD_COLOR);
+
+  for (let row = 0; row < GRID_SIZE; row++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
+      fillRoundedRect(context, cellRect(row, col, layout), CELL_COLOR);
+    }
+  }
+
+  for (const tile of tiles) {
+    drawTile(context, tile, layout);
+  }
+}
+
+function computeLayout(cssSize: number): Layout {
+  const gap = cssSize * GAP_RATIO;
+  const cellSize = (cssSize - gap * (GRID_SIZE + 1)) / GRID_SIZE;
+  return { gap, cellSize };
+}
+
+function cellRect(row: number, col: number, { gap, cellSize }: Layout): Rect {
+  return { x: gap + col * (cellSize + gap), y: gap + row * (cellSize + gap), width: cellSize, height: cellSize };
+}
+
+function drawTile(context: CanvasRenderingContext2D, tile: Tile, layout: Layout): void {
+  const rect = cellRect(tile.row, tile.col, layout);
+  const { background, text } = tileColor(tile.value);
+
+  fillRoundedRect(context, rect, background);
+
+  context.fillStyle = text;
+  context.font = `bold ${Math.round(layout.cellSize * fontScale(tile.value))}px system-ui, sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(String(tile.value), rect.x + rect.width / 2, rect.y + rect.height / 2);
+}
+
+/** Shrinks the digits so a Tile's value stays inside its Cell as it grows from 2 to five digits. */
+function fontScale(value: number): number {
+  const digits = String(value).length;
+  if (digits <= 2) return 0.5;
+  if (digits === 3) return 0.4;
+  return 0.32;
+}
+
+function fillRoundedRect(context: CanvasRenderingContext2D, rect: Rect, color: string): void {
+  context.beginPath();
+  context.roundRect(rect.x, rect.y, rect.width, rect.height, CORNER_RADIUS);
+  context.fillStyle = color;
+  context.fill();
+}

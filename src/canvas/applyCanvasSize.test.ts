@@ -23,6 +23,14 @@ describe("applyCanvasSize", () => {
     expect(canvas.style.height).toBe("600px");
   });
 
+  it("returns the computed size it applied", () => {
+    setViewport(800, 800, 2);
+
+    const size = applyCanvasSize(canvas);
+
+    expect(size).toEqual({ cssSize: 600, pixelSize: 1200 });
+  });
+
   it("scales the backing store size for devicePixelRatio", () => {
     setViewport(800, 800, 2);
 

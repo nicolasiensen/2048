@@ -29,4 +29,21 @@ describe("main", () => {
 
     await expect(loadMain()).rejects.toThrow("#game-canvas");
   });
+
+  it("consumes arrow key presses as Moves but leaves other keys alone", async () => {
+    document.body.innerHTML = '<div id="app"><canvas id="game-canvas"></canvas></div>';
+    Object.defineProperty(window, "innerWidth", { value: 800, writable: true });
+    Object.defineProperty(window, "innerHeight", { value: 800, writable: true });
+    Object.defineProperty(window, "devicePixelRatio", { value: 1, writable: true });
+
+    await loadMain();
+
+    const moveKey = new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true });
+    window.dispatchEvent(moveKey);
+    expect(moveKey.defaultPrevented).toBe(true);
+
+    const otherKey = new KeyboardEvent("keydown", { key: "a", cancelable: true });
+    window.dispatchEvent(otherKey);
+    expect(otherKey.defaultPrevented).toBe(false);
+  });
 });
