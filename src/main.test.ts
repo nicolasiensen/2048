@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameState } from "./engine";
 
 /** Lets individual tests seed the Grid `createGame` starts from, to reach Win/Game-Over states without playing out a full game. */
-const engineMocks = vi.hoisted(() => ({ initialState: null as GameState | null }));
+const engineMocks = vi.hoisted(() => ({
+  initialState: null as GameState | null,
+}));
 
 vi.mock("./engine", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./engine")>();
@@ -74,7 +76,10 @@ async function loadMain(): Promise<void> {
 function setUpViewport(): void {
   Object.defineProperty(window, "innerWidth", { value: 800, writable: true });
   Object.defineProperty(window, "innerHeight", { value: 800, writable: true });
-  Object.defineProperty(window, "devicePixelRatio", { value: 1, writable: true });
+  Object.defineProperty(window, "devicePixelRatio", {
+    value: 1,
+    writable: true,
+  });
 }
 
 describe("main", () => {
@@ -98,7 +103,10 @@ describe("main", () => {
     expect(canvas.style.width).toBe("600px");
 
     Object.defineProperty(window, "innerWidth", { value: 300, writable: true });
-    Object.defineProperty(window, "innerHeight", { value: 300, writable: true });
+    Object.defineProperty(window, "innerHeight", {
+      value: 300,
+      writable: true,
+    });
     window.dispatchEvent(new Event("resize"));
 
     expect(canvas.style.width).toBe("240px");
@@ -111,7 +119,8 @@ describe("main", () => {
   });
 
   it("throws if the score, best score, or new game elements are missing", async () => {
-    document.body.innerHTML = '<div id="app"><canvas id="game-canvas"></canvas></div>';
+    document.body.innerHTML =
+      '<div id="app"><canvas id="game-canvas"></canvas></div>';
 
     await expect(loadMain()).rejects.toThrow("#score-value");
   });
@@ -122,11 +131,17 @@ describe("main", () => {
 
     await loadMain();
 
-    const moveKey = new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true });
+    const moveKey = new KeyboardEvent("keydown", {
+      key: "ArrowLeft",
+      cancelable: true,
+    });
     window.dispatchEvent(moveKey);
     expect(moveKey.defaultPrevented).toBe(true);
 
-    const otherKey = new KeyboardEvent("keydown", { key: "a", cancelable: true });
+    const otherKey = new KeyboardEvent("keydown", {
+      key: "a",
+      cancelable: true,
+    });
     window.dispatchEvent(otherKey);
     expect(otherKey.defaultPrevented).toBe(false);
   });
@@ -148,7 +163,8 @@ describe("main", () => {
 
     await loadMain();
 
-    const bestScoreValueEl = document.querySelector<HTMLElement>("#best-score-value")!;
+    const bestScoreValueEl =
+      document.querySelector<HTMLElement>("#best-score-value")!;
     expect(bestScoreValueEl.textContent).toBe("4096");
   });
 
@@ -167,10 +183,13 @@ describe("main", () => {
 
     await loadMain();
 
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true }));
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true })
+    );
 
     const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
-    const bestScoreValueEl = document.querySelector<HTMLElement>("#best-score-value")!;
+    const bestScoreValueEl =
+      document.querySelector<HTMLElement>("#best-score-value")!;
     expect(scoreValueEl.textContent).toBe("4");
     expect(bestScoreValueEl.textContent).toBe("4");
     expect(window.localStorage.getItem("2048:best-score")).toBe("4");
@@ -186,7 +205,8 @@ describe("main", () => {
     document.querySelector<HTMLButtonElement>("#new-game-button")!.click();
 
     const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
-    const bestScoreValueEl = document.querySelector<HTMLElement>("#best-score-value")!;
+    const bestScoreValueEl =
+      document.querySelector<HTMLElement>("#best-score-value")!;
     expect(scoreValueEl.textContent).toBe("0");
     expect(bestScoreValueEl.textContent).toBe("999");
   });
@@ -209,14 +229,19 @@ describe("main", () => {
     const winBanner = document.querySelector<HTMLElement>("#win-banner")!;
     expect(winBanner.hidden).toBe(true);
 
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true }));
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true })
+    );
 
     expect(winBanner.hidden).toBe(false);
 
     const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
     expect(scoreValueEl.textContent).toBe("2048");
 
-    const anotherMove = new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true });
+    const anotherMove = new KeyboardEvent("keydown", {
+      key: "ArrowRight",
+      cancelable: true,
+    });
     window.dispatchEvent(anotherMove);
     expect(anotherMove.defaultPrevented).toBe(true);
   });
@@ -236,7 +261,9 @@ describe("main", () => {
 
     await loadMain();
 
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true }));
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true })
+    );
 
     const winBanner = document.querySelector<HTMLElement>("#win-banner")!;
     expect(winBanner.hidden).toBe(false);
@@ -244,18 +271,25 @@ describe("main", () => {
     document.querySelector<HTMLButtonElement>("#keep-playing-button")!.click();
     expect(winBanner.hidden).toBe(true);
 
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true }));
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true })
+    );
     expect(winBanner.hidden).toBe(true);
   });
 
   it("shows the Game Over overlay when the Grid is full with no possible Merges", async () => {
     document.body.innerHTML = GAME_MARKUP;
     setUpViewport();
-    engineMocks.initialState = { tiles: gameOverTiles(), score: 0, hasWon: false };
+    engineMocks.initialState = {
+      tiles: gameOverTiles(),
+      score: 0,
+      hasWon: false,
+    };
 
     await loadMain();
 
-    const gameOverOverlay = document.querySelector<HTMLElement>("#game-over-overlay")!;
+    const gameOverOverlay =
+      document.querySelector<HTMLElement>("#game-over-overlay")!;
     expect(gameOverOverlay.hidden).toBe(false);
   });
 
@@ -265,22 +299,151 @@ describe("main", () => {
 
     await loadMain();
 
-    const gameOverOverlay = document.querySelector<HTMLElement>("#game-over-overlay")!;
+    const gameOverOverlay =
+      document.querySelector<HTMLElement>("#game-over-overlay")!;
     expect(gameOverOverlay.hidden).toBe(true);
   });
 
   it("lets a New Game start from the Game Over overlay", async () => {
     document.body.innerHTML = GAME_MARKUP;
     setUpViewport();
-    engineMocks.initialState = { tiles: gameOverTiles(), score: 42, hasWon: false };
+    engineMocks.initialState = {
+      tiles: gameOverTiles(),
+      score: 42,
+      hasWon: false,
+    };
 
     await loadMain();
 
-    document.querySelector<HTMLButtonElement>("#game-over-new-game-button")!.click();
+    document
+      .querySelector<HTMLButtonElement>("#game-over-new-game-button")!
+      .click();
 
-    const gameOverOverlay = document.querySelector<HTMLElement>("#game-over-overlay")!;
+    const gameOverOverlay =
+      document.querySelector<HTMLElement>("#game-over-overlay")!;
     const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
     expect(gameOverOverlay.hidden).toBe(true);
     expect(scoreValueEl.textContent).toBe("0");
+  });
+
+  it("persists the in-progress game state after a Move", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true })
+    );
+
+    const saved = JSON.parse(window.localStorage.getItem("2048:game-state")!);
+    expect(saved.score).toBe(4);
+    expect(saved.hasWon).toBe(false);
+    expect(saved.hasShownWinBanner).toBe(false);
+    expect(saved.tiles).toEqual(expect.any(Array));
+  });
+
+  it("restores a saved game state on load, including Tiles, Score, and Win flag", async () => {
+    window.localStorage.setItem(
+      "2048:game-state",
+      JSON.stringify({
+        tiles: [{ id: 1, value: 8, row: 2, col: 2 }],
+        score: 128,
+        hasWon: false,
+        hasShownWinBanner: false,
+      })
+    );
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
+    expect(scoreValueEl.textContent).toBe("128");
+  });
+
+  it("does not re-show the Win banner on restore when it was already shown before reload", async () => {
+    window.localStorage.setItem(
+      "2048:game-state",
+      JSON.stringify({
+        tiles: [{ id: 1, value: 2048, row: 0, col: 0 }],
+        score: 2048,
+        hasWon: true,
+        hasShownWinBanner: true,
+      })
+    );
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const winBanner = document.querySelector<HTMLElement>("#win-banner")!;
+    expect(winBanner.hidden).toBe(true);
+  });
+
+  it("starts a fresh game when there is no saved state", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
+    expect(scoreValueEl.textContent).toBe("0");
+  });
+
+  it("starts a fresh game when the saved state is corrupted", async () => {
+    window.localStorage.setItem("2048:game-state", "not-json{");
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
+    expect(scoreValueEl.textContent).toBe("0");
+  });
+
+  it("replaces the saved in-progress state with a fresh game, but keeps the Best Score, when New Game is clicked", async () => {
+    window.localStorage.setItem("2048:best-score", "999");
+    window.localStorage.setItem(
+      "2048:game-state",
+      JSON.stringify({
+        tiles: [{ id: 1, value: 8, row: 2, col: 2 }],
+        score: 128,
+        hasWon: false,
+        hasShownWinBanner: false,
+      })
+    );
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+    document.querySelector<HTMLButtonElement>("#new-game-button")!.click();
+
+    const saved = JSON.parse(window.localStorage.getItem("2048:game-state")!);
+    expect(saved.score).toBe(0);
+    expect(saved.hasWon).toBe(false);
+    expect(saved.hasShownWinBanner).toBe(false);
+    expect(window.localStorage.getItem("2048:best-score")).toBe("999");
+  });
+
+  it("persists a freshly created game immediately, before any Move is made", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const saved = JSON.parse(window.localStorage.getItem("2048:game-state")!);
+    expect(saved.score).toBe(0);
+    expect(saved.hasWon).toBe(false);
+    expect(saved.hasShownWinBanner).toBe(false);
+    expect(saved.tiles).toEqual(expect.any(Array));
   });
 });

@@ -5,6 +5,11 @@ import type { GameState } from "./engine";
 import { directionForKey } from "./input/keyMap";
 import { drawBoard } from "./render/drawBoard";
 import { loadBestScore, saveBestScore } from "./storage/bestScore";
+import {
+  clearGameState,
+  loadGameState,
+  saveGameState,
+} from "./storage/gameState";
 
 function main(): void {
   const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -15,11 +20,13 @@ function main(): void {
   if (!scoreValueEl) {
     throw new Error("Score element #score-value not found");
   }
-  const bestScoreValueEl = document.querySelector<HTMLElement>("#best-score-value");
+  const bestScoreValueEl =
+    document.querySelector<HTMLElement>("#best-score-value");
   if (!bestScoreValueEl) {
     throw new Error("Best Score element #best-score-value not found");
   }
-  const newGameButton = document.querySelector<HTMLButtonElement>("#new-game-button");
+  const newGameButton =
+    document.querySelector<HTMLButtonElement>("#new-game-button");
   if (!newGameButton) {
     throw new Error("New Game button #new-game-button not found");
   }
@@ -27,7 +34,9 @@ function main(): void {
   if (!winBannerEl) {
     throw new Error("Win banner #win-banner not found");
   }
-  const keepPlayingButton = document.querySelector<HTMLButtonElement>("#keep-playing-button");
+  const keepPlayingButton = document.querySelector<HTMLButtonElement>(
+    "#keep-playing-button"
+  );
   if (!keepPlayingButton) {
     throw new Error("Keep Playing button #keep-playing-button not found");
   }
@@ -35,15 +44,24 @@ function main(): void {
   if (!gameOverEl) {
     throw new Error("Game Over overlay #game-over-overlay not found");
   }
-  const gameOverNewGameButton = document.querySelector<HTMLButtonElement>("#game-over-new-game-button");
+  const gameOverNewGameButton = document.querySelector<HTMLButtonElement>(
+    "#game-over-new-game-button"
+  );
   if (!gameOverNewGameButton) {
-    throw new Error("Game Over New Game button #game-over-new-game-button not found");
+    throw new Error(
+      "Game Over New Game button #game-over-new-game-button not found"
+    );
   }
 
-  let state: GameState = createGame();
+  const savedGameState = loadGameState(window.localStorage);
+  let state: GameState = savedGameState ?? createGame();
+  let hasShownWinBanner = savedGameState?.hasShownWinBanner ?? false;
   let bestScore = loadBestScore(window.localStorage);
   let cssSize = applyCanvasSize(canvas).cssSize;
-  let hasShownWinBanner = false;
+
+  const persistGameState = (): void => {
+    saveGameState(window.localStorage, { ...state, hasShownWinBanner });
+  };
 
   const render = (): void => {
     const context = canvas.getContext("2d");
@@ -78,13 +96,16 @@ function main(): void {
       saveBestScore(window.localStorage, bestScore);
     }
     render();
+    persistGameState();
   });
 
   const startNewGame = (): void => {
     state = createGame();
     hasShownWinBanner = false;
     winBannerEl.hidden = true;
+    clearGameState(window.localStorage);
     render();
+    persistGameState();
   };
 
   newGameButton.addEventListener("click", startNewGame);
@@ -95,6 +116,7 @@ function main(): void {
   });
 
   render();
+  persistGameState();
 }
 
 main();
