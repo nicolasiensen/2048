@@ -97,6 +97,11 @@ body {
   text-align: center;
 }
 
+#win-banner[hidden],
+#game-over-overlay[hidden] {
+  display: none;
+}
+
 #win-banner p,
 #game-over-overlay p {
   margin: 0;
