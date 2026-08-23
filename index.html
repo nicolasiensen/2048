@@ -20,7 +20,17 @@
           </div>
           <button id="new-game-button" type="button">New Game</button>
         </header>
-        <canvas id="game-canvas"></canvas>
+        <div id="board-wrap">
+          <canvas id="game-canvas"></canvas>
+          <div id="win-banner" hidden>
+            <p>You Win!</p>
+            <button id="keep-playing-button" type="button">Keep Going</button>
+          </div>
+          <div id="game-over-overlay" hidden>
+            <p>Game Over!</p>
+            <button id="game-over-new-game-button" type="button">New Game</button>
+          </div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

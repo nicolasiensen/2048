@@ -1,4 +1,41 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { GameState } from "./engine";
+
+/** Lets individual tests seed the Grid `createGame` starts from, to reach Win/Game-Over states without playing out a full game. */
+const engineMocks = vi.hoisted(() => ({ initialState: null as GameState | null }));
+
+vi.mock("./engine", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./engine")>();
+  return {
+    ...actual,
+    createGame: (...args: Parameters<typeof actual.createGame>) => {
+      if (engineMocks.initialState) {
+        const seeded = engineMocks.initialState;
+        engineMocks.initialState = null;
+        return seeded;
+      }
+      return actual.createGame(...args);
+    },
+  };
+});
+
+/** A full Grid where every adjacent pair differs, so no Move would produce a Merge. */
+function gameOverTiles(): GameState["tiles"] {
+  const values = [
+    [2, 4, 2, 4],
+    [4, 2, 4, 2],
+    [2, 4, 2, 4],
+    [4, 2, 4, 2],
+  ];
+  const tiles: GameState["tiles"] = [];
+  let id = 0;
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      tiles.push({ id: ++id, value: values[row][col], row, col });
+    }
+  }
+  return tiles;
+}
 
 const GAME_MARKUP = `
   <div id="app">
@@ -14,7 +51,17 @@ const GAME_MARKUP = `
         </div>
         <button id="new-game-button" type="button">New Game</button>
       </header>
-      <canvas id="game-canvas"></canvas>
+      <div id="board-wrap">
+        <canvas id="game-canvas"></canvas>
+        <div id="win-banner" hidden>
+          <p>You Win!</p>
+          <button id="keep-playing-button" type="button">Keep Going</button>
+        </div>
+        <div id="game-over-overlay" hidden>
+          <p>Game Over!</p>
+          <button id="game-over-new-game-button" type="button">New Game</button>
+        </div>
+      </div>
     </div>
   </div>
 `;
@@ -38,6 +85,7 @@ describe("main", () => {
   afterEach(() => {
     window.localStorage.clear();
     vi.restoreAllMocks();
+    engineMocks.initialState = null;
   });
 
   it("sizes the canvas on load and re-sizes it on window resize", async () => {
@@ -107,6 +155,14 @@ describe("main", () => {
   it("updates Score immediately on a Merge and raises a surpassed Best Score, persisting it", async () => {
     document.body.innerHTML = GAME_MARKUP;
     setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
     vi.spyOn(Math, "random").mockReturnValue(0);
 
     await loadMain();
@@ -133,5 +189,98 @@ describe("main", () => {
     const bestScoreValueEl = document.querySelector<HTMLElement>("#best-score-value")!;
     expect(scoreValueEl.textContent).toBe("0");
     expect(bestScoreValueEl.textContent).toBe("999");
+  });
+
+  it("shows the You Win banner the first time a 2048 Tile appears, and play continues", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 1024, row: 0, col: 0 },
+        { id: 2, value: 1024, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+
+    const winBanner = document.querySelector<HTMLElement>("#win-banner")!;
+    expect(winBanner.hidden).toBe(true);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true }));
+
+    expect(winBanner.hidden).toBe(false);
+
+    const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
+    expect(scoreValueEl.textContent).toBe("2048");
+
+    const anotherMove = new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true });
+    window.dispatchEvent(anotherMove);
+    expect(anotherMove.defaultPrevented).toBe(true);
+  });
+
+  it("does not show the Win banner again once dismissed, even on later Moves", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 1024, row: 0, col: 0 },
+        { id: 2, value: 1024, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true }));
+
+    const winBanner = document.querySelector<HTMLElement>("#win-banner")!;
+    expect(winBanner.hidden).toBe(false);
+
+    document.querySelector<HTMLButtonElement>("#keep-playing-button")!.click();
+    expect(winBanner.hidden).toBe(true);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true }));
+    expect(winBanner.hidden).toBe(true);
+  });
+
+  it("shows the Game Over overlay when the Grid is full with no possible Merges", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = { tiles: gameOverTiles(), score: 0, hasWon: false };
+
+    await loadMain();
+
+    const gameOverOverlay = document.querySelector<HTMLElement>("#game-over-overlay")!;
+    expect(gameOverOverlay.hidden).toBe(false);
+  });
+
+  it("does not show the Game Over overlay while Moves are still possible", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const gameOverOverlay = document.querySelector<HTMLElement>("#game-over-overlay")!;
+    expect(gameOverOverlay.hidden).toBe(true);
+  });
+
+  it("lets a New Game start from the Game Over overlay", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = { tiles: gameOverTiles(), score: 42, hasWon: false };
+
+    await loadMain();
+
+    document.querySelector<HTMLButtonElement>("#game-over-new-game-button")!.click();
+
+    const gameOverOverlay = document.querySelector<HTMLElement>("#game-over-overlay")!;
+    const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
+    expect(gameOverOverlay.hidden).toBe(true);
+    expect(scoreValueEl.textContent).toBe("0");
   });
 });

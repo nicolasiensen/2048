@@ -78,3 +78,54 @@ body {
   display: block;
   border: 1px solid currentColor;
 }
+
+#board-wrap {
+  position: relative;
+}
+
+#win-banner,
+#game-over-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 6px;
+  color: #f9f6f2;
+  text-align: center;
+}
+
+#win-banner p,
+#game-over-overlay p {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: bold;
+}
+
+#win-banner {
+  background: rgb(237 194 46 / 0.85);
+}
+
+#game-over-overlay {
+  background: rgb(238 228 218 / 0.73);
+  color: #776e65;
+}
+
+#keep-playing-button,
+#game-over-new-game-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #8f7a66;
+  color: #f9f6f2;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#keep-playing-button:hover,
+#game-over-new-game-button:hover {
+  background: #9f8b76;
+}

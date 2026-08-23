@@ -1,6 +1,6 @@
 import "./style.css";
 import { applyCanvasSize } from "./canvas/applyCanvasSize";
-import { applyMove, createGame } from "./engine";
+import { applyMove, createGame, isGameOver } from "./engine";
 import type { GameState } from "./engine";
 import { directionForKey } from "./input/keyMap";
 import { drawBoard } from "./render/drawBoard";
@@ -23,10 +23,27 @@ function main(): void {
   if (!newGameButton) {
     throw new Error("New Game button #new-game-button not found");
   }
+  const winBannerEl = document.querySelector<HTMLElement>("#win-banner");
+  if (!winBannerEl) {
+    throw new Error("Win banner #win-banner not found");
+  }
+  const keepPlayingButton = document.querySelector<HTMLButtonElement>("#keep-playing-button");
+  if (!keepPlayingButton) {
+    throw new Error("Keep Playing button #keep-playing-button not found");
+  }
+  const gameOverEl = document.querySelector<HTMLElement>("#game-over-overlay");
+  if (!gameOverEl) {
+    throw new Error("Game Over overlay #game-over-overlay not found");
+  }
+  const gameOverNewGameButton = document.querySelector<HTMLButtonElement>("#game-over-new-game-button");
+  if (!gameOverNewGameButton) {
+    throw new Error("Game Over New Game button #game-over-new-game-button not found");
+  }
 
   let state: GameState = createGame();
   let bestScore = loadBestScore(window.localStorage);
   let cssSize = applyCanvasSize(canvas).cssSize;
+  let hasShownWinBanner = false;
 
   const render = (): void => {
     const context = canvas.getContext("2d");
@@ -34,6 +51,12 @@ function main(): void {
 
     scoreValueEl.textContent = String(state.score);
     bestScoreValueEl.textContent = String(bestScore);
+
+    if (state.hasWon && !hasShownWinBanner) {
+      hasShownWinBanner = true;
+      winBannerEl.hidden = false;
+    }
+    gameOverEl.hidden = !isGameOver(state);
   };
 
   window.addEventListener("resize", () => {
@@ -57,9 +80,18 @@ function main(): void {
     render();
   });
 
-  newGameButton.addEventListener("click", () => {
+  const startNewGame = (): void => {
     state = createGame();
+    hasShownWinBanner = false;
+    winBannerEl.hidden = true;
     render();
+  };
+
+  newGameButton.addEventListener("click", startNewGame);
+  gameOverNewGameButton.addEventListener("click", startNewGame);
+
+  keepPlayingButton.addEventListener("click", () => {
+    winBannerEl.hidden = true;
   });
 
   render();
