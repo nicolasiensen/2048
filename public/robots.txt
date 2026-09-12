@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nicolasiensen.github.io/2048/sitemap.xml
