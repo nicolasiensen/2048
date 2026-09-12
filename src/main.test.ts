@@ -73,6 +73,40 @@ async function loadMain(): Promise<void> {
   await import("./main");
 }
 
+/** Dispatches a touchstart/touchend pair on the canvas simulating a drag of (dx, dy) pixels. */
+function fireSwipe(
+  canvas: HTMLCanvasElement,
+  dx: number,
+  dy: number
+): TouchEvent {
+  const startX = 100;
+  const startY = 100;
+
+  canvas.dispatchEvent(
+    new TouchEvent("touchstart", {
+      touches: [
+        { identifier: 1, target: canvas, clientX: startX, clientY: startY },
+      ] as unknown as Touch[],
+      cancelable: true,
+    })
+  );
+
+  const touchend = new TouchEvent("touchend", {
+    changedTouches: [
+      {
+        identifier: 1,
+        target: canvas,
+        clientX: startX + dx,
+        clientY: startY + dy,
+      },
+    ] as unknown as Touch[],
+    cancelable: true,
+  });
+  canvas.dispatchEvent(touchend);
+
+  return touchend;
+}
+
 function setUpViewport(): void {
   Object.defineProperty(window, "innerWidth", { value: 800, writable: true });
   Object.defineProperty(window, "innerHeight", { value: 800, writable: true });
@@ -144,6 +178,158 @@ describe("main", () => {
     });
     window.dispatchEvent(otherKey);
     expect(otherKey.defaultPrevented).toBe(false);
+  });
+
+  it("consumes a swipe on the canvas as a Move but leaves a short drag (tap) alone", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas")!;
+
+    const swipe = fireSwipe(canvas, -60, 0);
+    expect(swipe.defaultPrevented).toBe(true);
+
+    const tap = fireSwipe(canvas, 3, -2);
+    expect(tap.defaultPrevented).toBe(false);
+  });
+
+  it("updates Score on a swipe Merge, just like a keyboard Move", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+
+    const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas")!;
+    fireSwipe(canvas, -60, 0);
+
+    const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
+    expect(scoreValueEl.textContent).toBe("4");
+  });
+
+  it("respects the animation-lock, ignoring a second swipe made before the first Move's animation finishes", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+        { id: 3, value: 2, row: 0, col: 2 },
+        { id: 4, value: 2, row: 0, col: 3 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+
+    const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas")!;
+    // First swipe merges [2,2,2,2] -> [4,4] for +8, and a Tile spawns.
+    fireSwipe(canvas, -60, 0);
+    // Fired synchronously, before the first Move's animation frame runs: if the
+    // lock didn't hold, this would merge the two 4s into an 8 for +8 more.
+    fireSwipe(canvas, -60, 0);
+
+    const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
+    expect(scoreValueEl.textContent).toBe("8");
+  });
+
+  it("prevents the page from scrolling while a swipe is in progress on the canvas", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas")!;
+    canvas.dispatchEvent(
+      new TouchEvent("touchstart", {
+        touches: [
+          { identifier: 1, target: canvas, clientX: 100, clientY: 100 },
+        ] as unknown as Touch[],
+        cancelable: true,
+      })
+    );
+
+    const move = new TouchEvent("touchmove", {
+      touches: [
+        { identifier: 1, target: canvas, clientX: 80, clientY: 100 },
+      ] as unknown as Touch[],
+      cancelable: true,
+    });
+    canvas.dispatchEvent(move);
+
+    expect(move.defaultPrevented).toBe(true);
+  });
+
+  it("ignores a second finger landing on the canvas mid-gesture, tracking only the first", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+
+    const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas")!;
+
+    // First finger starts a leftward swipe.
+    canvas.dispatchEvent(
+      new TouchEvent("touchstart", {
+        touches: [
+          { identifier: 1, target: canvas, clientX: 100, clientY: 100 },
+        ] as unknown as Touch[],
+        cancelable: true,
+      })
+    );
+    // A second finger (e.g. an accidental palm touch) lands nearby.
+    canvas.dispatchEvent(
+      new TouchEvent("touchstart", {
+        touches: [
+          { identifier: 1, target: canvas, clientX: 100, clientY: 100 },
+          { identifier: 2, target: canvas, clientX: 150, clientY: 150 },
+        ] as unknown as Touch[],
+        cancelable: true,
+      })
+    );
+    // The second finger lifts first, right where it landed — should not be
+    // read as the end of the first finger's gesture.
+    canvas.dispatchEvent(
+      new TouchEvent("touchend", {
+        changedTouches: [
+          { identifier: 2, target: canvas, clientX: 150, clientY: 150 },
+        ] as unknown as Touch[],
+        cancelable: true,
+      })
+    );
+    // The first finger then lifts after actually swiping left.
+    const touchend = new TouchEvent("touchend", {
+      changedTouches: [
+        { identifier: 1, target: canvas, clientX: 40, clientY: 100 },
+      ] as unknown as Touch[],
+      cancelable: true,
+    });
+    canvas.dispatchEvent(touchend);
+
+    expect(touchend.defaultPrevented).toBe(true);
+    const scoreValueEl = document.querySelector<HTMLElement>("#score-value")!;
+    expect(scoreValueEl.textContent).toBe("4");
   });
 
   it("displays the current Score, starting at 0", async () => {

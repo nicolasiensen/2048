@@ -1,8 +1,10 @@
 import "./style.css";
 import { applyCanvasSize } from "./canvas/applyCanvasSize";
 import { applyMove, createGame, isGameOver } from "./engine";
-import type { GameState } from "./engine";
+import type { Direction, GameState } from "./engine";
 import { directionForKey } from "./input/keyMap";
+import { directionForSwipe } from "./input/swipe";
+import type { Point } from "./input/swipe";
 import { buildAnimationPlan } from "./render/animationPlan";
 import { drawBoard } from "./render/drawBoard";
 import { toRenderTiles } from "./render/renderTile";
@@ -93,10 +95,7 @@ function main(): void {
     render();
   });
 
-  window.addEventListener("keydown", (event) => {
-    const direction = directionForKey(event.key);
-    if (!direction) return;
-    event.preventDefault();
+  const dispatchMove = (direction: Direction): void => {
     if (animator.animating) return;
 
     const previousTiles = state.tiles;
@@ -120,6 +119,69 @@ function main(): void {
       },
       drawStaticBoard
     );
+  };
+
+  window.addEventListener("keydown", (event) => {
+    const direction = directionForKey(event.key);
+    if (!direction) return;
+    event.preventDefault();
+    dispatchMove(direction);
+  });
+
+  // Tracks the one finger whose gesture we're following, by touch identifier,
+  // so a second finger landing on the canvas (e.g. an accidental palm touch)
+  // can't be mistaken for the end of the first finger's swipe.
+  let activeTouch: (Point & { id: number }) | null = null;
+
+  const findTouch = (touches: TouchList, id: number): Touch | null =>
+    Array.from(touches).find((touch) => touch.identifier === id) ?? null;
+
+  canvas.addEventListener(
+    "touchstart",
+    (event) => {
+      if (activeTouch) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      activeTouch = {
+        id: touch.identifier,
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+    },
+    { passive: true }
+  );
+
+  canvas.addEventListener(
+    "touchmove",
+    (event) => {
+      if (activeTouch && findTouch(event.touches, activeTouch.id)) {
+        event.preventDefault();
+      }
+    },
+    { passive: false }
+  );
+
+  canvas.addEventListener("touchend", (event) => {
+    if (!activeTouch) return;
+    const touch = findTouch(event.changedTouches, activeTouch.id);
+    if (!touch) return;
+
+    const start = activeTouch;
+    activeTouch = null;
+
+    const direction = directionForSwipe(start, {
+      x: touch.clientX,
+      y: touch.clientY,
+    });
+    if (!direction) return;
+    event.preventDefault();
+    dispatchMove(direction);
+  });
+
+  canvas.addEventListener("touchcancel", (event) => {
+    if (activeTouch && findTouch(event.changedTouches, activeTouch.id)) {
+      activeTouch = null;
+    }
   });
 
   const startNewGame = (): void => {

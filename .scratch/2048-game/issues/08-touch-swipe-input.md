@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Swiping in any of the four directions on a touch device triggers the corresponding Move
-- [ ] Swipe input respects the same animation-lock as keyboard input
-- [ ] The game is fully playable on a touch/mobile viewport
+- [x] Swiping in any of the four directions on a touch device triggers the corresponding Move
+- [x] Swipe input respects the same animation-lock as keyboard input
+- [x] The game is fully playable on a touch/mobile viewport
