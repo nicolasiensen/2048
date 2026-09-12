@@ -163,7 +163,7 @@ describe("main", () => {
 
   it("throws if the theme select is missing", async () => {
     document.body.innerHTML = GAME_MARKUP.replace(
-      '<select id="theme-select"></select>',
+      '<select id="theme-select" aria-label="Theme"></select>',
       ""
     );
     setUpViewport();
