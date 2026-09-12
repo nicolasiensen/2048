@@ -15,6 +15,10 @@ import {
   loadGameState,
   saveGameState,
 } from "./storage/gameState";
+import { loadTheme, saveTheme } from "./storage/theme";
+import { applyTheme } from "./theme/applyTheme";
+import { THEMES } from "./theme/themes";
+import type { Theme } from "./theme/themes";
 
 function main(): void {
   const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -57,13 +61,27 @@ function main(): void {
       "Game Over New Game button #game-over-new-game-button not found"
     );
   }
+  const themeSelect =
+    document.querySelector<HTMLSelectElement>("#theme-select");
+  if (!themeSelect) {
+    throw new Error("Theme select #theme-select not found");
+  }
 
   const savedGameState = loadGameState(window.localStorage);
   let state: GameState = savedGameState ?? createGame();
   let hasShownWinBanner = savedGameState?.hasShownWinBanner ?? false;
   let bestScore = loadBestScore(window.localStorage);
+  let theme: Theme = loadTheme(window.localStorage);
   let cssSize = applyCanvasSize(canvas).cssSize;
   const animator = new TileAnimator();
+
+  for (const candidate of THEMES) {
+    const option = document.createElement("option");
+    option.value = candidate.id;
+    option.textContent = candidate.name;
+    themeSelect.append(option);
+  }
+  themeSelect.value = theme.id;
 
   const persistGameState = (): void => {
     saveGameState(window.localStorage, { ...state, hasShownWinBanner });
@@ -71,7 +89,7 @@ function main(): void {
 
   const drawStaticBoard = (): void => {
     const context = canvas.getContext("2d");
-    if (context) drawBoard(context, cssSize, toRenderTiles(state.tiles));
+    if (context) drawBoard(context, cssSize, toRenderTiles(state.tiles), theme);
   };
 
   const updateHud = (): void => {
@@ -115,11 +133,19 @@ function main(): void {
       plan,
       (renderTiles) => {
         const context = canvas.getContext("2d");
-        if (context) drawBoard(context, cssSize, renderTiles);
+        if (context) drawBoard(context, cssSize, renderTiles, theme);
       },
       drawStaticBoard
     );
   };
+
+  themeSelect.addEventListener("change", () => {
+    theme =
+      THEMES.find((candidate) => candidate.id === themeSelect.value) ?? theme;
+    saveTheme(window.localStorage, theme);
+    applyTheme(theme);
+    if (!animator.animating) drawStaticBoard();
+  });
 
   window.addEventListener("keydown", (event) => {
     const direction = directionForKey(event.key);
@@ -201,6 +227,7 @@ function main(): void {
     winBannerEl.hidden = true;
   });
 
+  applyTheme(theme);
   render();
   persistGameState();
 }

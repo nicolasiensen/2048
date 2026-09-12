@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameState } from "./engine";
+import { THEMES, findTheme } from "./theme/themes";
 
 /** Lets individual tests seed the Grid `createGame` starts from, to reach Win/Game-Over states without playing out a full game. */
 const engineMocks = vi.hoisted(() => ({
@@ -51,6 +52,7 @@ const GAME_MARKUP = `
           <span class="score-label">Best</span>
           <span id="best-score-value">0</span>
         </div>
+        <select id="theme-select" aria-label="Theme"></select>
         <button id="new-game-button" type="button">New Game</button>
       </header>
       <div id="board-wrap">
@@ -157,6 +159,16 @@ describe("main", () => {
       '<div id="app"><canvas id="game-canvas"></canvas></div>';
 
     await expect(loadMain()).rejects.toThrow("#score-value");
+  });
+
+  it("throws if the theme select is missing", async () => {
+    document.body.innerHTML = GAME_MARKUP.replace(
+      '<select id="theme-select"></select>',
+      ""
+    );
+    setUpViewport();
+
+    await expect(loadMain()).rejects.toThrow("#theme-select");
   });
 
   it("consumes arrow key presses as Moves but leaves other keys alone", async () => {
@@ -379,6 +391,52 @@ describe("main", () => {
     expect(scoreValueEl.textContent).toBe("4");
     expect(bestScoreValueEl.textContent).toBe("4");
     expect(window.localStorage.getItem("2048:best-score")).toBe("4");
+  });
+
+  it("lists every Theme in the theme select, defaulting to Midnight", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const themeSelect =
+      document.querySelector<HTMLSelectElement>("#theme-select")!;
+    expect([...themeSelect.options].map((option) => option.value)).toEqual(
+      THEMES.map((theme) => theme.id)
+    );
+    expect(themeSelect.value).toBe("midnight");
+  });
+
+  it("selects a persisted Theme on start", async () => {
+    window.localStorage.setItem("2048:theme", "ocean");
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const themeSelect =
+      document.querySelector<HTMLSelectElement>("#theme-select")!;
+    expect(themeSelect.value).toBe("ocean");
+    expect(
+      document.documentElement.style.getPropertyValue("--panel-background")
+    ).toBe(findTheme("ocean").ui.panelBackground);
+  });
+
+  it("persists and applies the chosen Theme when the theme select changes", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+
+    const themeSelect =
+      document.querySelector<HTMLSelectElement>("#theme-select")!;
+    themeSelect.value = "ocean";
+    themeSelect.dispatchEvent(new Event("change"));
+
+    expect(window.localStorage.getItem("2048:theme")).toBe("ocean");
+    expect(
+      document.documentElement.style.getPropertyValue("--panel-background")
+    ).toBe(findTheme("ocean").ui.panelBackground);
   });
 
   it("resets the Grid and Score, but keeps the Best Score, when New Game is clicked", async () => {

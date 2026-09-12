@@ -1,5 +1,17 @@
 :root {
   color-scheme: light dark;
+
+  /* Defaults match the Midnight theme; theme/applyTheme.ts overwrites these on load and on switch. */
+  --page-background: #0f1117;
+  --panel-background: #1c1f2b;
+  --panel-text: #cbd5f5;
+  --button-background: #4c1d95;
+  --button-background-hover: #6d28d9;
+  --button-text: #ffffff;
+  --win-banner-background: rgb(250 204 21 / 0.9);
+  --win-banner-text: #1c1f2b;
+  --game-over-background: rgb(15 17 23 / 0.85);
+  --game-over-text: #f4f4f5;
 }
 
 html,
@@ -13,6 +25,8 @@ body {
   align-items: center;
   justify-content: center;
   font-family: system-ui, sans-serif;
+  background: var(--page-background);
+  transition: background-color 0.2s ease;
 }
 
 #app {
@@ -42,8 +56,8 @@ body {
   min-width: 64px;
   padding: 6px 12px;
   border-radius: 6px;
-  background: #bbada0;
-  color: #eee4da;
+  background: var(--panel-background);
+  color: var(--panel-text);
 }
 
 .score-label {
@@ -58,25 +72,34 @@ body {
   font-weight: bold;
 }
 
+#theme-select {
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: var(--panel-background);
+  color: var(--panel-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 #new-game-button {
   margin-left: auto;
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
-  background: #8f7a66;
-  color: #f9f6f2;
+  background: var(--button-background);
+  color: var(--button-text);
   font-size: 0.9rem;
   font-weight: bold;
   cursor: pointer;
 }
 
 #new-game-button:hover {
-  background: #9f8b76;
+  background: var(--button-background-hover);
 }
 
 #game-canvas {
   display: block;
-  border: 1px solid currentColor;
   touch-action: none;
 }
 
@@ -94,7 +117,6 @@ body {
   justify-content: center;
   gap: 12px;
   border-radius: 6px;
-  color: #f9f6f2;
   text-align: center;
 }
 
@@ -111,12 +133,13 @@ body {
 }
 
 #win-banner {
-  background: rgb(237 194 46 / 0.85);
+  background: var(--win-banner-background);
+  color: var(--win-banner-text);
 }
 
 #game-over-overlay {
-  background: rgb(238 228 218 / 0.73);
-  color: #776e65;
+  background: var(--game-over-background);
+  color: var(--game-over-text);
 }
 
 #keep-playing-button,
@@ -124,8 +147,8 @@ body {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
-  background: #8f7a66;
-  color: #f9f6f2;
+  background: var(--button-background);
+  color: var(--button-text);
   font-size: 0.9rem;
   font-weight: bold;
   cursor: pointer;
@@ -133,5 +156,5 @@ body {
 
 #keep-playing-button:hover,
 #game-over-new-game-button:hover {
-  background: #9f8b76;
+  background: var(--button-background-hover);
 }

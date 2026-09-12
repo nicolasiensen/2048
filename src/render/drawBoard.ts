@@ -1,9 +1,8 @@
 import { GRID_SIZE } from "../engine";
+import type { Theme } from "../theme/themes";
 import { tileColor } from "./palette";
 import type { RenderTile } from "./renderTile";
 
-const BOARD_COLOR = "#bbada0";
-const CELL_COLOR = "#cdc1b4";
 const CORNER_RADIUS = 6;
 const GAP_RATIO = 0.03;
 
@@ -31,7 +30,8 @@ interface Layout {
 export function drawBoard(
   context: CanvasRenderingContext2D,
   cssSize: number,
-  tiles: RenderTile[]
+  tiles: RenderTile[],
+  theme: Theme
 ): void {
   const layout = computeLayout(cssSize);
 
@@ -39,17 +39,17 @@ export function drawBoard(
   fillRoundedRect(
     context,
     { x: 0, y: 0, width: cssSize, height: cssSize },
-    BOARD_COLOR
+    theme.board.background
   );
 
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
-      fillRoundedRect(context, cellRect(row, col, layout), CELL_COLOR);
+      fillRoundedRect(context, cellRect(row, col, layout), theme.board.cell);
     }
   }
 
   for (const tile of tiles) {
-    drawTile(context, tile, layout);
+    drawTile(context, tile, layout, theme);
   }
 }
 
@@ -71,7 +71,8 @@ function cellRect(row: number, col: number, { gap, cellSize }: Layout): Rect {
 function drawTile(
   context: CanvasRenderingContext2D,
   tile: RenderTile,
-  layout: Layout
+  layout: Layout,
+  theme: Theme
 ): void {
   if (tile.opacity <= 0) return;
 
@@ -79,7 +80,7 @@ function drawTile(
     cellRect(tile.row, tile.col, layout),
     tile.scale
   );
-  const { background, text } = tileColor(tile.value);
+  const { background, text } = tileColor(theme, tile.value);
 
   context.save();
   context.globalAlpha = tile.opacity;
