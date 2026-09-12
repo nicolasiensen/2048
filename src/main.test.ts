@@ -5,6 +5,7 @@ import { THEMES, findTheme } from "./theme/themes";
 /** Lets individual tests seed the Grid `createGame` starts from, to reach Win/Game-Over states without playing out a full game. */
 const engineMocks = vi.hoisted(() => ({
   initialState: null as GameState | null,
+  forceGameOver: false,
 }));
 
 vi.mock("./engine", async (importOriginal) => {
@@ -19,6 +20,8 @@ vi.mock("./engine", async (importOriginal) => {
       }
       return actual.createGame(...args);
     },
+    isGameOver: (...args: Parameters<typeof actual.isGameOver>) =>
+      engineMocks.forceGameOver || actual.isGameOver(...args),
   };
 });
 
@@ -121,12 +124,15 @@ function setUpViewport(): void {
 describe("main", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.gtag = vi.fn() as typeof window.gtag;
   });
 
   afterEach(() => {
     window.localStorage.clear();
     vi.restoreAllMocks();
     engineMocks.initialState = null;
+    engineMocks.forceGameOver = false;
+    delete window.gtag;
   });
 
   it("sizes the canvas on load and re-sizes it on window resize", async () => {
@@ -391,6 +397,139 @@ describe("main", () => {
     expect(scoreValueEl.textContent).toBe("4");
     expect(bestScoreValueEl.textContent).toBe("4");
     expect(window.localStorage.getItem("2048:best-score")).toBe("4");
+  });
+
+  it("sends a new_best_score Analytics event when the Best Score is surpassed", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true })
+    );
+
+    expect(window.gtag).toHaveBeenCalledWith("event", "new_best_score", {
+      score: 4,
+    });
+  });
+
+  it("does not send a new_best_score Analytics event when a Move doesn't surpass the Best Score", async () => {
+    window.localStorage.setItem("2048:best-score", "999");
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true })
+    );
+
+    expect(window.gtag).not.toHaveBeenCalledWith(
+      "event",
+      "new_best_score",
+      expect.anything()
+    );
+  });
+
+  it("sends a game_over Analytics event, with the final Score, on the Move that reaches Game Over", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+    engineMocks.forceGameOver = true;
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true })
+    );
+
+    expect(window.gtag).toHaveBeenCalledWith("event", "game_over", {
+      score: 4,
+    });
+  });
+
+  it("does not send a game_over Analytics event while Moves are still possible", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: [
+        { id: 1, value: 2, row: 0, col: 0 },
+        { id: 2, value: 2, row: 0, col: 1 },
+      ],
+      score: 0,
+      hasWon: false,
+    };
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await loadMain();
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true })
+    );
+
+    expect(window.gtag).not.toHaveBeenCalledWith(
+      "event",
+      "game_over",
+      expect.anything()
+    );
+  });
+
+  it("sends a new_game Analytics event when New Game is clicked", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+
+    await loadMain();
+    (window.gtag as ReturnType<typeof vi.fn>).mockClear();
+
+    document.querySelector<HTMLButtonElement>("#new-game-button")!.click();
+
+    expect(window.gtag).toHaveBeenCalledWith("event", "new_game", undefined);
+  });
+
+  it("sends a new_game Analytics event when New Game is clicked from the Game Over overlay", async () => {
+    document.body.innerHTML = GAME_MARKUP;
+    setUpViewport();
+    engineMocks.initialState = {
+      tiles: gameOverTiles(),
+      score: 42,
+      hasWon: false,
+    };
+
+    await loadMain();
+    (window.gtag as ReturnType<typeof vi.fn>).mockClear();
+
+    document
+      .querySelector<HTMLButtonElement>("#game-over-new-game-button")!
+      .click();
+
+    expect(window.gtag).toHaveBeenCalledWith("event", "new_game", undefined);
   });
 
   it("lists every Theme in the theme select, defaulting to Midnight", async () => {

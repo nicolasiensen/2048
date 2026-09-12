@@ -1,4 +1,9 @@
 import "./style.css";
+import {
+  trackGameOver,
+  trackNewBestScore,
+  trackNewGame,
+} from "./analytics/analytics";
 import { applyCanvasSize } from "./canvas/applyCanvasSize";
 import { applyMove, createGame, isGameOver } from "./engine";
 import type { Direction, GameState } from "./engine";
@@ -124,6 +129,10 @@ function main(): void {
     if (state.score > bestScore) {
       bestScore = state.score;
       saveBestScore(window.localStorage, bestScore);
+      trackNewBestScore(bestScore);
+    }
+    if (isGameOver(state)) {
+      trackGameOver(state.score);
     }
     updateHud();
     persistGameState();
@@ -218,6 +227,7 @@ function main(): void {
     clearGameState(window.localStorage);
     render();
     persistGameState();
+    trackNewGame();
   };
 
   newGameButton.addEventListener("click", startNewGame);
