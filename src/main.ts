@@ -3,7 +3,10 @@ import { applyCanvasSize } from "./canvas/applyCanvasSize";
 import { applyMove, createGame, isGameOver } from "./engine";
 import type { GameState } from "./engine";
 import { directionForKey } from "./input/keyMap";
+import { buildAnimationPlan } from "./render/animationPlan";
 import { drawBoard } from "./render/drawBoard";
+import { toRenderTiles } from "./render/renderTile";
+import { TileAnimator } from "./render/tileAnimator";
 import { loadBestScore, saveBestScore } from "./storage/bestScore";
 import {
   clearGameState,
@@ -58,15 +61,18 @@ function main(): void {
   let hasShownWinBanner = savedGameState?.hasShownWinBanner ?? false;
   let bestScore = loadBestScore(window.localStorage);
   let cssSize = applyCanvasSize(canvas).cssSize;
+  const animator = new TileAnimator();
 
   const persistGameState = (): void => {
     saveGameState(window.localStorage, { ...state, hasShownWinBanner });
   };
 
-  const render = (): void => {
+  const drawStaticBoard = (): void => {
     const context = canvas.getContext("2d");
-    if (context) drawBoard(context, cssSize, state.tiles);
+    if (context) drawBoard(context, cssSize, toRenderTiles(state.tiles));
+  };
 
+  const updateHud = (): void => {
     scoreValueEl.textContent = String(state.score);
     bestScoreValueEl.textContent = String(bestScore);
 
@@ -75,6 +81,11 @@ function main(): void {
       winBannerEl.hidden = false;
     }
     gameOverEl.hidden = !isGameOver(state);
+  };
+
+  const render = (): void => {
+    drawStaticBoard();
+    updateHud();
   };
 
   window.addEventListener("resize", () => {
@@ -86,7 +97,9 @@ function main(): void {
     const direction = directionForKey(event.key);
     if (!direction) return;
     event.preventDefault();
+    if (animator.animating) return;
 
+    const previousTiles = state.tiles;
     const result = applyMove(state, direction);
     if (!result.moved) return;
 
@@ -95,11 +108,22 @@ function main(): void {
       bestScore = state.score;
       saveBestScore(window.localStorage, bestScore);
     }
-    render();
+    updateHud();
     persistGameState();
+
+    const plan = buildAnimationPlan(previousTiles, result);
+    animator.start(
+      plan,
+      (renderTiles) => {
+        const context = canvas.getContext("2d");
+        if (context) drawBoard(context, cssSize, renderTiles);
+      },
+      drawStaticBoard
+    );
   });
 
   const startNewGame = (): void => {
+    animator.cancel();
     state = createGame();
     hasShownWinBanner = false;
     winBannerEl.hidden = true;

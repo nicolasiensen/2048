@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tiles visibly slide from their old position to their new position on each Move
-- [ ] Merging Tiles animate combining into the resulting Tile
-- [ ] Animation is implemented via a hand-rolled `requestAnimationFrame` loop (no animation library / new runtime dependency)
-- [ ] Keyboard input during an in-flight animation is ignored until the animation completes
+- [x] Tiles visibly slide from their old position to their new position on each Move
+- [x] Merging Tiles animate combining into the resulting Tile
+- [x] Animation is implemented via a hand-rolled `requestAnimationFrame` loop (no animation library / new runtime dependency)
+- [x] Keyboard input during an in-flight animation is ignored until the animation completes
